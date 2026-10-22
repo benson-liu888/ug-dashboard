@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>UG 直營門市營運儀表板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600&display=swap">
+<script src="d3.min.js"></script>
+<style>
+:root{
+  --font-anthropic-sans:'Noto Sans TC',system-ui,-apple-system,'PingFang TC','Microsoft JhengHei',sans-serif;
+  --font-anthropic-serif:'Noto Serif TC',Georgia,'PMingLiU',serif;
+  --cds-font-size-caption:12.5px;--cds-font-size-body:14.5px;--cds-font-size-heading:16px;--cds-font-size-title:28px;
+  --cds-font-weight-medium:500;
+  --cds-gap-xs:4px;--cds-gap-sm:8px;--cds-gap-md:16px;--cds-gap-lg:24px;--cds-gap-xl:32px;
+  --cds-pad-xs:4px;--cds-pad-sm:8px;--cds-pad-md:12px;--cds-pad-lg:20px;--cds-pad-xl:28px;
+  --cds-radius:10px;--cds-dur-slow:.35s;--cds-ease-out:cubic-bezier(.2,.7,.2,1);
+  --color-bg:#F6F5F1;--color-panel:#FFFFFF;--color-fg:#1F2A2E;--color-fg-muted:#5F6B6E;--color-border-line:#E3E1DA;
+  --color-ok:#1F7A4D;--color-warn:#9A6200;--color-bad:#B3261E;
+  --cds-chart-grid:#ECEAE4;--cds-chart-axis:#B9B6AD;--cds-chart-reference:#6B6A65;--cds-chart-muted:#C9C6BD;--cds-chart-status-critical:#C8463D;
+  --cds-surface-popover:#FFFFFF;--cds-border:#E3E1DA;--cds-shadow-popover:0 6px 24px rgba(20,30,35,.12);--cds-text-secondary:#5F6B6E;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --color-bg:#151A1C;--color-panel:#1E2528;--color-fg:#ECEFEE;--color-fg-muted:#A3ADB0;--color-border-line:#2F383B;
+  --color-ok:#5FC492;--color-warn:#E3B04B;--color-bad:#F08A80;
+  --cds-chart-grid:#2A3235;--cds-chart-axis:#4A5558;--cds-chart-reference:#AAB3B5;--cds-chart-muted:#4C5659;--cds-chart-status-critical:#E7695F;
+  --cds-surface-popover:#252D30;--cds-border:#38433F;--cds-shadow-popover:0 6px 24px rgba(0,0,0,.45);--cds-text-secondary:#A3ADB0;
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans)}
+#dash-root{max-width:1320px;margin-inline:auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (min-width:900px){#dash-root{padding-left:32px;padding-right:32px}}
+.dash-skeleton{color:transparent!important;background:var(--cds-chart-grid);border-radius:6px;min-height:1.2em}
+#gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+#gate form{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:14px;padding:32px;width:min(100%,380px);display:flex;flex-direction:column;gap:14px}
+#gate h1{margin:0;font-family:var(--font-anthropic-serif);font-weight:400;font-size:24px}
+#gate p{margin:0;color:var(--color-fg-muted);font-size:14px;line-height:1.6}
+#gate input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg)}
+#gate button{font:inherit;font-size:15px;padding:10px 12px;border:0;border-radius:8px;background:var(--color-fg);color:var(--color-bg);cursor:pointer}
+#gate button:disabled{opacity:.6;cursor:wait}
+#gate .err{color:var(--color-bad);min-height:1.4em;font-size:13px}
+
+.ug{font-family:var(--font-anthropic-sans);display:flex;flex-direction:column;gap:var(--cds-gap-lg);color:var(--color-fg)}
+.ug-head{display:flex;flex-wrap:wrap;gap:var(--cds-gap-md);align-items:flex-end;justify-content:space-between}
+.ug-head>div{min-width:0;flex:1 1 22rem}
+.ug-title{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0;line-height:1.2}
+.ug-take{color:var(--color-fg-muted);margin:6px 0 0;font-size:var(--cds-font-size-body);max-width:72ch;line-height:1.6}
+.ug-filters{display:flex;gap:var(--cds-gap-sm);flex-wrap:wrap}
+.ug-filters label{display:flex;flex-direction:column;gap:4px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.ug select{font:inherit;font-size:var(--cds-font-size-body);padding:6px 10px;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-panel);color:var(--color-fg);min-width:9rem}
+.ug-tabs{display:flex;gap:2px;border-bottom:1px solid var(--color-border-line);overflow-x:auto}
+.ug-tab{appearance:none;border:0;background:none;font:inherit;font-size:var(--cds-font-size-body);padding:10px 14px;color:var(--color-fg-muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.ug-tab:hover{color:var(--color-fg)}
+.ug-tab[aria-selected="true"]{color:var(--color-fg);border-bottom-color:var(--color-fg);font-weight:var(--cds-font-weight-medium)}
+.ug-tab:focus-visible,.ug select:focus-visible,.ug-t th:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
+.ug-page{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
+.ug-notice{margin:0;font-size:var(--cds-font-size-caption);color:var(--color-warn);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-xs) var(--cds-pad-sm);background:var(--color-panel)}
+.ug-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:var(--cds-gap-md)}
+.ug-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);display:flex;flex-direction:column;gap:var(--cds-gap-sm);min-width:0}
+.ug-card h3{margin:0;font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium)}
+.ug-note{margin:0;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);line-height:1.5}
+.ug-lbl{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.ug-val{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums;line-height:1.15}
+.ug-sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.ug .up{color:var(--color-ok)}
+.ug .down{color:var(--color-bad)}
+.ug-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:var(--cds-gap-md)}
+.ug-chart{position:relative;min-height:260px}
+.ug-chart svg{display:block}
+.ug-tick{font-size:var(--cds-font-size-caption);fill:var(--color-fg-muted);font-family:var(--font-anthropic-sans)}
+.ug-tip{position:absolute;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);pointer-events:none;opacity:0;white-space:nowrap;z-index:2;font-variant-numeric:tabular-nums}
+.ug-tip .h{color:var(--cds-text-secondary)}
+.ug-tip .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.ug-tw{overflow:auto;max-height:560px}
+.ug-t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:var(--cds-font-size-body)}
+.ug-t th,.ug-t td{padding:8px 10px;border-bottom:1px solid var(--color-border-line);text-align:right;white-space:nowrap}
+.ug-t th:first-child,.ug-t td:first-child{text-align:left}
+.ug-t th{position:sticky;top:0;background:var(--color-panel);font-weight:var(--cds-font-weight-medium);color:var(--color-fg-muted);cursor:pointer;user-select:none;font-size:var(--cds-font-size-caption)}
+.ug-t tr.sel td{font-weight:var(--cds-font-weight-medium)}
+.ug-kv{display:grid;grid-template-columns:auto auto;gap:6px 16px;margin:0;font-variant-numeric:tabular-nums}
+.ug-kv dt{color:var(--color-fg-muted)}
+.ug-kv dd{margin:0;text-align:right}
+.ug-kv .big{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-title)}
+.ug-stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--cds-chart-grid)}
+.ug-stack span{display:block;height:100%}
+.ug-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.ug-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ug-br{display:grid;grid-template-columns:6.5rem 1fr auto;gap:10px 12px;align-items:center;font-variant-numeric:tabular-nums}
+.ug-br .bar{height:14px;border-radius:4px}
+.ug-br .track{position:relative;height:14px}
+.ug-rank{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:var(--cds-gap-md)}
+.ug-rank ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;font-variant-numeric:tabular-nums}
+.ug-rank li span{float:right}
+[data-dash-source-state=empty]{color:transparent}
+@media (prefers-reduced-motion:no-preference){[data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}}
+
+</style>
+</head>
+<body>
+<div id="gate">
+  <form id="gate-form" autocomplete="off">
+    <h1>UG 直營門市營運儀表板</h1>
+    <p>請輸入密碼以查看業績資料。</p>
+    <input id="gate-pw" type="password" aria-label="密碼" placeholder="密碼" required>
+    <button id="gate-btn" type="submit">進入</button>
+    <div class="err" id="gate-err" role="alert"></div>
+  </form>
+</div>
+<div id="dash-root" hidden>
+<div class="ug">
+  <header class="ug-head">
+    <div>
+      <h1 class="ug-title" id="title">UG 直營門市營運儀表板</h1>
+      <p class="ug-note" id="updated"></p>
+      <p class="ug-take" id="take"><span class="dash-skeleton">—</span></p>
+    </div>
+    <div class="ug-filters">
+      <label>門市<select id="f-store" aria-label="門市" data-source="m"></select></label>
+      <label>月份<select id="f-month" aria-label="月份" data-source="m"></select></label>
+    </div>
+  </header>
+
+  <nav class="ug-tabs" role="tablist">
+    <button class="ug-tab" role="tab" data-tab="monthly" aria-selected="true">月報總覽</button>
+    <button class="ug-tab" role="tab" data-tab="weekly" aria-selected="false">週報</button>
+    <button class="ug-tab" role="tab" data-tab="trend" aria-selected="false">趨勢分析</button>
+    <button class="ug-tab" role="tab" data-tab="stores" aria-selected="false">門市對比</button>
+  </nav>
+
+  <p class="ug-notice" id="notice" hidden></p>
+
+  <!-- 月報 -->
+  <section class="ug-page" id="monthly">
+    <div class="ug-kpis" id="m-kpis"></div>
+    <div class="ug-grid">
+      <div class="ug-card" id="m-gap-card">
+        <h3 id="m-gap-h">目標達成</h3>
+        <p class="ug-note" id="m-gap-note">營業淨額對照每日營業目標加總。</p>
+        <dl class="ug-kv" id="m-gap"></dl>
+      </div>
+      <div class="ug-card" id="m-bridge-card">
+        <h3>營收變化拆解（日均）</h3>
+        <p class="ug-note">日均營業淨額的增減，拆成「來客數變化」與「客單價變化」各帶來多少。</p>
+        <div class="ug-br" id="m-bridge"></div>
+      </div>
+    </div>
+    <div class="ug-grid">
+      <div class="ug-card" id="m-ch-card">
+        <h3>消費通路結構</h3>
+        <p class="ug-note">現場＝營業淨額扣除 Uber Eats、foodpanda、ODO 金額。增減以日均比較上月。</p>
+        <div class="ug-stack" id="m-stack" data-source="m"></div>
+        <div class="ug-tw"><table class="ug-t" id="m-ch"><thead><tr><th>通路</th><th>營業額</th><th>占比</th><th>單數</th><th>日均月增減</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="ug-card" id="m-fee-card">
+        <h3>外送抽成估算</h3>
+        <p class="ug-note">以 Uber Eats 抽成 33%、foodpanda 抽成 31% 估算，實際費率請以合約為準。</p>
+        <dl class="ug-kv" id="m-fee"></dl>
+      </div>
+    </div>
+    <div class="ug-card" id="m-table-card">
+      <h3>門市排行</h3>
+      <p class="ug-note">點欄位標題可排序；月增減以日均營業淨額比較上月。</p>
+      <div class="ug-tw"><table class="ug-t" id="m-table" data-source="m" data-row-key="s,mo">
+        <thead><tr>
+          <th data-field="s" data-k="s">門市</th>
+          <th data-field="n" data-k="n">營業淨額</th>
+          <th data-field="ach" data-k="ach">目標達成</th>
+          <th data-field="ch_nd" data-k="ch_nd">日均月增減</th>
+          <th data-field="tc" data-k="tc">來客數</th>
+          <th data-field="aov" data-k="aov">客單價</th>
+          <th data-field="sh_od" data-k="sh_od">ODO 占比</th>
+          <th data-field="sh_del" data-k="sh_del">外送占比</th>
+          <th data-field="prod" data-k="prod">每工時杯數</th>
+        </tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- 週報 -->
+  <section class="ug-page" id="weekly" hidden>
+    <div class="ug-filters"><label>週次（週一至週日）<select id="f-week" aria-label="週次" data-source="w"></select></label></div>
+    <p class="ug-note" id="w-basis">所有比較都用日均：本週日均 vs 上週相同星期幾的日均。</p>
+    <div class="ug-kpis" id="w-kpis"></div>
+    <div class="ug-grid">
+      <div class="ug-card" id="w-ch-card">
+        <h3>各通路日均比較上週</h3>
+        <p class="ug-note">本週各通路日均營業額，對照上週相同星期幾的日均。</p>
+        <div class="ug-tw"><table class="ug-t" id="w-ch"><thead><tr><th>通路</th><th>本週日均</th><th>上週同期日均</th><th>增減</th><th>本週占比</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div class="ug-card" id="w-table-card">
+      <h3>各門市本週表現（日均）</h3>
+      <p class="ug-note">點欄位標題可排序；增減皆以日均對照上週相同星期幾。</p>
+      <div class="ug-tw"><table class="ug-t" id="w-table" data-source="w" data-row-key="s,wk">
+        <thead><tr>
+          <th data-field="s" data-k="s">門市</th>
+          <th data-field="nd" data-k="nd">日均營業淨額</th>
+          <th data-field="ch_nd" data-k="ch_nd">週增減</th>
+          <th data-field="tcd" data-k="tcd">日均來客數</th>
+          <th data-field="ch_tcd" data-k="ch_tcd">來客增減</th>
+          <th data-field="aov" data-k="aov">客單價</th>
+          <th data-field="ch_aov" data-k="ch_aov">客單增減</th>
+          <th data-field="ach" data-k="ach">目標達成</th>
+        </tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- 趨勢 -->
+  <section class="ug-page" id="trend" hidden>
+    <div class="ug-card" id="t-daily-card">
+      <h3>每日營業淨額</h3>
+      <p class="ug-note">長條為每日營業淨額，虛線為當日營業目標。</p>
+      <div class="ug-legend" id="t-daily-lg"></div>
+      <div class="ug-chart" id="t-daily" data-source="dd"></div>
+    </div>
+    <div class="ug-grid">
+      <div class="ug-card" id="t-wkday-card">
+        <h3>星期別日均營業淨額</h3>
+        <p class="ug-note">所選月份中，每個星期幾的平均營業淨額。</p>
+        <div class="ug-chart" id="t-wkday" data-source="wd"></div>
+      </div>
+      <div class="ug-card" id="t-wx-card">
+        <h3>天氣與營業額</h3>
+        <p class="ug-note">全部期間依天氣分組的日均營業淨額；雨天含有雨、有雷。</p>
+        <div class="ug-chart" id="t-wx" data-source="wx"></div>
+      </div>
+    </div>
+    <div class="ug-card" id="t-ch-card">
+      <h3>各通路日均營業額（月）</h3>
+      <p class="ug-note">用日均比較，進行中的月份也能和完整月份對照。</p>
+      <div class="ug-legend" id="t-ch-lg"></div>
+      <div class="ug-chart" id="t-ch" data-source="m"></div>
+    </div>
+  </section>
+
+  <!-- 門市對比 -->
+  <section class="ug-page" id="stores" hidden>
+    <div class="ug-card" id="s-line-card">
+      <h3>各店日均營業淨額走勢</h3>
+      <p class="ug-note" id="s-line-note">上方選擇門市即可凸顯該店。</p>
+      <div class="ug-chart" id="s-line" data-source="m"></div>
+    </div>
+    <div class="ug-grid">
+      <div class="ug-card" id="s-scatter-card">
+        <h3>來客數 × 客單價</h3>
+        <p class="ug-note">所選月份各店日均來客數與客單價；右上角＝人多又買得多。</p>
+        <div class="ug-chart" id="s-scatter" data-source="m"></div>
+      </div>
+      <div class="ug-card" id="s-rank-card">
+        <h3>日均月增減排行</h3>
+        <p class="ug-note">所選月份與上月相比，日均營業淨額成長最多與衰退最多的門市。</p>
+        <div class="ug-rank"><div><p class="ug-lbl">成長前 5 名</p><ol id="s-top"></ol></div><div><p class="ug-lbl">衰退前 5 名</p><ol id="s-bot"></ol></div></div>
+      </div>
+    </div>
+  </section>
+</div>
+</div>
+<script>
+(function(){
+  const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  async function decrypt(pw) {
+    const enc = await (await fetch('data.enc.json', { cache: 'no-store' })).json();
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(enc.salt), iterations: enc.iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(enc.iv) }, key, b64(enc.ct));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+  function makeDash(payload) {
+    const datasets = { daily: { status: 'ok', data: payload.rows } };
+    const calcs = {}; const subs = [];
+    const defaults = { store: '全部門市', month: payload.defaultMonth, week: '' };
+    let params = { ...defaults };
+    const run = () => subs.forEach((f) => f());
+    let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(run, 150); });
+    return {
+      calc(id, o) { calcs[id] = o; },
+      data(id) {
+        if (datasets[id]) return datasets[id];
+        const c = calcs[id]; if (!c) return { status: 'missing', data: [] };
+        if (!c._v) c._v = { status: 'ok', data: c.fn(...c.inputs.map((i) => this.data(i).data)) };
+        return c._v;
+      },
+      onData(fn) { subs.push(fn); fn(); },
+      params() { return { ...params }; },
+      setParams(o) { params = { ...params, ...o }; run(); },
+      resetParams() { params = { ...defaults }; run(); },
+      setLink(n) { try { history.replaceState(null, '', '#' + n); } catch (e) {} },
+      refresh() {},
+      colors: ['#3B6FB6', '#E07B39', '#2E9C8A', '#9B6BC2', '#C9A227', '#D1495B', '#5A8F29', '#7A7F82'],
+    };
+  }
+  function boot(payload) {
+    window.dash = makeDash(payload);
+    document.getElementById('gate').hidden = true;
+    document.getElementById('dash-root').hidden = false;
+    document.getElementById('updated').textContent = payload.note;
+    bootPage();
+  }
+  const form = document.getElementById('gate-form'), pw = document.getElementById('gate-pw'), btn = document.getElementById('gate-btn'), err = document.getElementById('gate-err');
+  async function tryPw(p, silent) {
+    btn.disabled = true; err.textContent = '';
+    let data;
+    try { data = await decrypt(p); }
+    catch (e) { if (!silent) err.textContent = '密碼不正確，請再試一次。'; try { sessionStorage.removeItem('ugpw'); } catch (x) {} btn.disabled = false; return; }
+    try { sessionStorage.setItem('ugpw', p); } catch (e) {}
+    btn.disabled = false;
+    try { boot(data); } catch (e) { console.error(e); document.getElementById('gate').hidden = false; document.getElementById('dash-root').hidden = true; err.textContent = '儀表板載入失敗，請重新整理頁面。'; }
+  }
+  form.addEventListener('submit', (e) => { e.preventDefault(); tryPw(pw.value, false); });
+  let saved = null; try { saved = sessionStorage.getItem('ugpw'); } catch (e) {}
+  if (saved) tryPw(saved, true); else pw.focus();
+})();
+function bootPage() {
+
+dash.calc('dd', {
+  inputs: ['daily'],
+  title: '每日彙總（含全部門市）',
+  description: '每家門市每天的數字，加上全部門市當天的合計；全部門市的天氣取當天最多門市的天氣。',
+  fn: (daily) => {
+    const F = ['n','g','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d'];
+    const out = []; const tot = new Map();
+    for (const r of daily) {
+      const o = { s: r.s, dt: r.dt, w: r.w || '', k: 1 };
+      for (const f of F) o[f] = Number(r[f]) || 0;
+      out.push(o);
+      let a = tot.get(r.dt);
+      if (!a) { a = { s: '全部門市', dt: r.dt, k: 0, wc: {} }; for (const f of F) a[f] = 0; tot.set(r.dt, a); }
+      a.k += 1; for (const f of F) a[f] += o[f];
+      if (o.w) a.wc[o.w] = (a.wc[o.w] || 0) + 1;
+    }
+    for (const a of tot.values()) {
+      const e = Object.entries(a.wc).sort((x, y) => y[1] - x[1]);
+      a.w = e.length ? e[0][0] : ''; delete a.wc; out.push(a);
+    }
+    return out;
+  },
+});
+
+dash.calc('m', {
+  inputs: ['dd'],
+  title: '月彙總',
+  description: '每家門市（含全部門市）每月的合計、比率、通路結構、抽成估算（UB 33%、FP 31%）與上月比較；月增減用日均計算。',
+  fn: (dd) => {
+    const F = ['n','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d'];
+    const g = new Map();
+    for (const r of dd) {
+      const mo = r.dt.slice(0, 7), key = r.s + '|' + mo;
+      let a = g.get(key);
+      if (!a) { a = { s: r.s, mo, days: 0, k: 0, last: '' }; for (const f of F) a[f] = 0; g.set(key, a); }
+      a.days += 1; a.k = Math.max(a.k, r.k); if (r.dt > a.last) a.last = r.dt;
+      for (const f of F) a[f] += r[f];
+    }
+    const rows = [...g.values()];
+    for (const a of rows) {
+      const y = +a.mo.slice(0, 4), m = +a.mo.slice(5, 7);
+      const dim = new Date(Date.UTC(y, m, 0)).getUTCDate(), ld = +a.last.slice(8, 10);
+      a.ina = a.n - a.uba - a.fpa - a.oda; a.inn = a.tc - a.ubn - a.fpn - a.odn;
+      a.aov = a.tc ? a.n / a.tc : null; a.prod = a.h ? a.c / a.h : null; a.ach = a.t ? a.n / a.t : null; a.gap = a.n - a.t;
+      a.nd = a.n / a.days; a.tcd = a.tc / a.days;
+      a.sh_in = a.ina / a.n; a.sh_od = a.oda / a.n; a.sh_ub = a.uba / a.n; a.sh_fp = a.fpa / a.n; a.sh_del = (a.uba + a.fpa) / a.n;
+      a.ina_d = a.ina / a.days; a.oda_d = a.oda / a.days; a.uba_d = a.uba / a.days; a.fpa_d = a.fpa / a.days;
+      a.ub_fee = a.uba * 0.33; a.fp_fee = a.fpa * 0.31; a.rcv = a.n - a.ub_fee - a.fp_fee;
+      a.dim = dim; a.inprog = ld < dim; a.left = dim - ld;
+      a.tfull = a.t / a.days * dim; a.need = a.inprog ? (a.tfull - a.n) / (dim - ld) : null;
+    }
+    const idx = new Map(rows.map((a) => [a.s + '|' + a.mo, a]));
+    for (const a of rows) {
+      const y = +a.mo.slice(0, 4), m = +a.mo.slice(5, 7);
+      const pm = m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0');
+      const p = idx.get(a.s + '|' + pm);
+      const ch = (u, v) => (p && v) ? u / v - 1 : null;
+      a.pmo = p ? pm : null;
+      a.nd_p = p ? p.nd : null; a.aov_p = p ? p.aov : null; a.tcd_p = p ? p.tcd : null;
+      a.ch_nd = ch(a.nd, p && p.nd); a.ch_tcd = ch(a.tcd, p && p.tcd); a.ch_aov = ch(a.aov, p && p.aov);
+      a.d_sh_del = p ? a.sh_del - p.sh_del : null; a.d_ach = p ? a.ach - p.ach : null;
+      a.ch_ina_d = ch(a.ina_d, p && p.ina_d); a.ch_oda_d = ch(a.oda_d, p && p.oda_d);
+      a.ch_uba_d = ch(a.uba_d, p && p.uba_d); a.ch_fpa_d = ch(a.fpa_d, p && p.fpa_d);
+      a.eff_tc = p ? (a.tcd - p.tcd) * p.aov : null; a.eff_aov = p ? (a.aov - p.aov) * a.tcd : null;
+      a.d_nd = p ? a.nd - p.nd : null; a.d_prod = p ? a.prod - p.prod : null;
+    }
+    return rows;
+  },
+});
+
+dash.calc('w', {
+  inputs: ['dd'],
+  title: '週彙總',
+  description: '每家門市（含全部門市）每週（週一至週日）的日均數字，與上週「相同星期幾」的日均比較；本週未滿 7 天時，上週只取同樣的星期幾。',
+  fn: (dd) => {
+    const F = ['n','t','tc','uba','fpa','oda','ubn','fpn','odn'];
+    const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10);
+    const byKey = new Map(dd.map((r) => [r.s + '|' + r.dt, r]));
+    const g = new Map();
+    for (const r of dd) {
+      const t = Date.parse(r.dt + 'T00:00:00Z'), dow = (new Date(t).getUTCDay() + 6) % 7;
+      const wk = iso(t - dow * DAY), key = r.s + '|' + wk;
+      let a = g.get(key);
+      if (!a) { a = { s: r.s, wk, days: 0, pdays: 0, k: 0, last: '' }; for (const f of F) { a[f] = 0; a[f + '_p'] = 0; } g.set(key, a); }
+      a.days += 1; a.k = Math.max(a.k, r.k); if (r.dt > a.last) a.last = r.dt;
+      for (const f of F) a[f] += r[f];
+      const p = byKey.get(r.s + '|' + iso(t - 7 * DAY));
+      if (p) { a.pdays += 1; for (const f of F) a[f + '_p'] += p[f]; }
+    }
+    const rows = [...g.values()];
+    for (const a of rows) {
+      a.wkend = iso(Date.parse(a.wk + 'T00:00:00Z') + 6 * DAY);
+      a.ina = a.n - a.uba - a.fpa - a.oda;
+      a.aov = a.tc ? a.n / a.tc : null; a.ach = a.t ? a.n / a.t : null;
+      a.nd = a.n / a.days; a.tcd = a.tc / a.days;
+      a.ina_d = a.ina / a.days; a.oda_d = a.oda / a.days; a.uba_d = a.uba / a.days; a.fpa_d = a.fpa / a.days;
+      a.sh_del = (a.uba + a.fpa) / a.n;
+      a.sh_in = a.ina / a.n; a.sh_od = a.oda / a.n; a.sh_ub = a.uba / a.n; a.sh_fp = a.fpa / a.n;
+      const q = a.pdays;
+      const ch = (u, v) => (q && v) ? u / v - 1 : null;
+      a.nd_p = q ? a.n_p / q : null; a.tcd_p = q ? a.tc_p / q : null; a.aov_p = (q && a.tc_p) ? a.n_p / a.tc_p : null;
+      const ina_p = a.n_p - a.uba_p - a.fpa_p - a.oda_p;
+      a.ina_d_p = q ? ina_p / q : null; a.oda_d_p = q ? a.oda_p / q : null; a.uba_d_p = q ? a.uba_p / q : null; a.fpa_d_p = q ? a.fpa_p / q : null;
+      a.ch_nd = ch(a.nd, a.nd_p); a.ch_tcd = ch(a.tcd, a.tcd_p); a.ch_aov = ch(a.aov, a.aov_p);
+      a.ch_ina_d = ch(a.ina_d, a.ina_d_p); a.ch_oda_d = ch(a.oda_d, a.oda_d_p); a.ch_uba_d = ch(a.uba_d, a.uba_d_p); a.ch_fpa_d = ch(a.fpa_d, a.fpa_d_p);
+      a.d_sh_del = (q && a.n_p) ? a.sh_del - (a.uba_p + a.fpa_p) / a.n_p : null;
+      for (const f of F) delete a[f + '_p'];
+    }
+    return rows;
+  },
+});
+
+dash.calc('wd', {
+  inputs: ['dd'],
+  title: '星期別日均',
+  description: '每家門市（含全部門市）每月依星期幾平均的營業淨額。',
+  fn: (dd) => {
+    const L = ['週一','週二','週三','週四','週五','週六','週日'];
+    const g = new Map();
+    for (const r of dd) {
+      const d = new Date(r.dt + 'T00:00:00Z'), i = (d.getUTCDay() + 6) % 7, mo = r.dt.slice(0, 7), key = r.s + '|' + mo + '|' + i;
+      let a = g.get(key);
+      if (!a) { a = { s: r.s, mo, i: i + 1, wd: L[i], sum: 0, cnt: 0 }; g.set(key, a); }
+      a.sum += r.n; a.cnt += 1;
+    }
+    return [...g.values()].map((a) => ({ s: a.s, mo: a.mo, i: a.i, wd: a.wd, avg: a.sum / a.cnt, cnt: a.cnt }));
+  },
+});
+
+dash.calc('wx', {
+  inputs: ['dd'],
+  title: '天氣別日均',
+  description: '每家門市（含全部門市）全部期間依天氣分組的日均營業淨額，以及與該店整體日均的差距；有雨或有雷歸為雨天。',
+  fn: (dd) => {
+    const grp = (w) => /雨|雷/.test(w) ? '雨天' : w.startsWith('晴') ? '晴' : w.startsWith('多雲') ? '多雲' : w.startsWith('陰') ? '陰' : '';
+    const O = { '晴': 1, '多雲': 2, '陰': 3, '雨天': 4 };
+    const g = new Map(), all = new Map();
+    for (const r of dd) {
+      const x = grp(r.w || '');
+      const t = all.get(r.s) || { sum: 0, cnt: 0 }; t.sum += r.n; t.cnt += 1; all.set(r.s, t);
+      if (!x) continue;
+      const key = r.s + '|' + x;
+      const a = g.get(key) || { s: r.s, wx: x, o: O[x], sum: 0, cnt: 0 };
+      a.sum += r.n; a.cnt += 1; g.set(key, a);
+    }
+    return [...g.values()].map((a) => {
+      const t = all.get(a.s), avg = a.sum / a.cnt;
+      return { s: a.s, wx: a.wx, o: a.o, avg, cnt: a.cnt, rel: avg / (t.sum / t.cnt) - 1 };
+    });
+  },
+});
+
+
+(function () {
+  const ALL = '全部門市';
+  const $ = (s) => document.querySelector(s);
+  const enc = (v) => String(v).replace(/%/g, '%25').replace(/&/g, '%26').replace(/=/g, '%3D');
+  const fmt = d3.format(',.0f'), f1 = d3.format(',.1f'), sp = d3.format('+.1%'), p1 = d3.format('.1%');
+  const spp = (v) => (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + ' 個百分點';
+  const sm = (v) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v));
+  const moL = (mo) => +mo.slice(5, 7) + ' 月';
+  const dL = (dt) => +dt.slice(5, 7) + '/' + +dt.slice(8, 10);
+  const short = (s) => s.replace(/店$/, '');
+  const CH = [
+    { k: 'in', name: '現場' }, { k: 'od', name: 'ODO' }, { k: 'ub', name: 'Uber Eats' }, { k: 'fp', name: 'foodpanda' },
+  ];
+  const AMT = { in: 'ina', od: 'oda', ub: 'uba', fp: 'fpa' };
+  const CNT = { in: 'inn', od: 'odn', ub: 'ubn', fp: 'fpn' };
+
+  function whereOf(o) { return Object.entries(o).map(([k, v]) => k + '=' + enc(v)).join('&'); }
+  function mk(tag, src, field, where, text, cls) {
+    const el = document.createElement(tag);
+    el.setAttribute('data-source', src); el.setAttribute('data-field', field); el.setAttribute('data-where', whereOf(where));
+    el.textContent = text; if (cls) el.className = cls;
+    return el;
+  }
+  function tone(el, v, goodUp) {
+    el.classList.remove('up', 'down');
+    if (v == null || isNaN(v) || Math.abs(v) < 1e-9) return;
+    el.classList.add((v > 0) === (goodUp !== false) ? 'up' : 'down');
+  }
+  function failLine(el) {
+    el.replaceChildren();
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;min-height:inherit;height:100%';
+    const dot = document.createElement('span'); dot.style.cssText = 'width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad)';
+    const t = document.createElement('span'); t.textContent = 'Failed to load'; t.style.cssText = 'color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)';
+    d.append(dot, t); el.append(d);
+  }
+
+  /* ---------- tabs ---------- */
+  let tab = 'monthly';
+  const tabs = [...document.querySelectorAll('.ug-tab')];
+  function show(t) {
+    tab = t;
+    tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    document.querySelectorAll('.ug-page').forEach((p) => { p.hidden = p.id !== t; });
+    dash.setLink(t);
+    draw();
+  }
+  tabs.forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
+  const fromHash = location.hash.slice(1);
+  if (['monthly', 'weekly', 'trend', 'stores'].includes(fromHash)) {
+    tab = fromHash;
+    tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+    document.querySelectorAll('.ug-page').forEach((p) => { p.hidden = p.id !== tab; });
+  }
+
+  /* ---------- filters ---------- */
+  const fStore = $('#f-store'), fMonth = $('#f-month'), fWeek = $('#f-week');
+  fStore.addEventListener('change', () => dash.setParams({ store: fStore.value }));
+  fMonth.addEventListener('change', () => dash.setParams({ month: fMonth.value }));
+  fWeek.addEventListener('change', () => dash.setParams({ week: fWeek.value }));
+
+  function fillSelect(sel, items, value) {
+    const cur = [...sel.options].map((o) => o.value + '|' + o.text).join(',');
+    const next = items.map((i) => i.v + '|' + i.t).join(',');
+    if (cur !== next) sel.replaceChildren(...items.map((i) => new Option(i.t, i.v)));
+    sel.value = value;
+  }
+
+  /* ---------- table sort ---------- */
+  const sortState = { 'm-table': { k: 'n', dir: -1 }, 'w-table': { k: 'nd', dir: -1 } };
+  document.querySelectorAll('#m-table th, #w-table th').forEach((th) => {
+    th.tabIndex = 0;
+    const go = () => {
+      const id = th.closest('table').id, st = sortState[id];
+      st.dir = st.k === th.dataset.k ? -st.dir : (th.dataset.k === 's' ? 1 : -1); st.k = th.dataset.k; draw();
+    };
+    th.addEventListener('click', go);
+    th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  function sortRows(id, rows) {
+    const st = sortState[id];
+    document.querySelectorAll('#' + id + ' th').forEach((th) => th.setAttribute('aria-sort', th.dataset.k === st.k ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'));
+    return rows.slice().sort((a, b) => {
+      const x = a[st.k], y = b[st.k];
+      if (typeof x === 'string') return st.dir * x.localeCompare(y, 'zh-Hant');
+      return st.dir * ((x ?? -Infinity) - (y ?? -Infinity));
+    });
+  }
+
+  /* ---------- KPI tile ---------- */
+  function tile(label, src, where, field, text, subParts) {
+    const c = document.createElement('div'); c.className = 'ug-card';
+    const l = document.createElement('div'); l.className = 'ug-lbl'; l.textContent = label;
+    const v = mk('div', src, field, where, text, 'ug-val');
+    const s = document.createElement('div'); s.className = 'ug-sub';
+    for (const p of subParts) s.append(p);
+    c.append(l, v, s);
+    return c;
+  }
+  function chg(src, where, field, v, goodUp, f) {
+    if (v == null || isNaN(v)) { const n = document.createElement('span'); n.textContent = '無上期資料'; return n; }
+    const el = mk('span', src, field, where, (f || sp)(v)); tone(el, v, goodUp); return el;
+  }
+  const txt = (t) => document.createTextNode(t);
+
+  /* ---------- tooltip ---------- */
+  function tipFor(box) {
+    const tip = document.createElement('div'); tip.className = 'ug-tip'; box.append(tip);
+    return {
+      show(ev, head, lines) {
+        tip.replaceChildren();
+        const h = document.createElement('div'); h.className = 'h'; h.textContent = head; tip.append(h);
+        for (const [color, name, val] of lines) {
+          const d = document.createElement('div');
+          if (color) { const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = color; d.append(sw); }
+          d.append(txt(name ? name + '　' + val : val)); tip.append(d);
+        }
+        tip.style.opacity = 1;
+        const r = box.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+        let x = ev.clientX - r.left + 12, y = ev.clientY - r.top - th - 8;
+        if (x + tw > r.width) x = ev.clientX - r.left - tw - 12;
+        if (x < 0) x = 0; if (y < 0) y = ev.clientY - r.top + 12;
+        tip.style.left = x + 'px'; tip.style.top = y + 'px';
+      },
+      hide() { tip.style.opacity = 0; },
+    };
+  }
+
+  function measure(svg, labels) {
+    const t = svg.append('text').attr('class', 'ug-tick');
+    let w = 0; for (const s of labels) { t.text(s); w = Math.max(w, t.node().getComputedTextLength()); }
+    t.remove(); return w;
+  }
+  const compact = (v) => Math.abs(v) >= 10000 ? (v / 10000).toFixed(v % 10000 === 0 ? 0 : 1) + '萬' : fmt(v);
+
+  /* ---------- bar chart ---------- */
+  function bars(el, rows, o) {
+    el.replaceChildren(); el.classList.remove('dash-skeleton');
+    if (!rows.length) return;
+    const W = Math.max(280, el.clientWidth || 600), H = o.h || 260;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', o.aria);
+    const ymax = d3.max(rows, (r) => Math.max(o.y(r), o.ref ? (o.ref(r) || 0) : 0)) || 1;
+    const y = d3.scaleLinear([0, ymax * 1.05], [H - 30, 12]).nice();
+    const ticks = y.ticks(4);
+    const ml = measure(svg, ticks.map(compact)) + 12, mr = 8;
+    const x = d3.scaleBand(rows.map(o.x), [ml, W - mr]).padding(0.25);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W - mr).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('class', 'ug-tick').attr('x', ml - 8).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').text(compact);
+    const bw = Math.min(32, x.bandwidth());
+    const rect = svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (r) => x(o.x(r)) + (x.bandwidth() - bw) / 2).attr('width', bw)
+      .attr('y', (r) => y(o.y(r))).attr('height', (r) => Math.max(0, y(0) - y(o.y(r)))).attr('rx', 4)
+      .attr('fill', o.color);
+    if (o.ref) {
+      const pts = rows.filter((r) => o.ref(r)).map((r) => [x(o.x(r)) + x.bandwidth() / 2, y(o.ref(r))]);
+      svg.append('path').attr('d', d3.line()(pts)).attr('fill', 'none').attr('stroke', 'var(--cds-chart-reference)').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 4');
+    }
+    const lw = measure(svg, rows.map((r) => o.xl(r))) + 10;
+    const step = Math.max(1, Math.ceil(lw / x.step()));
+    svg.append('g').selectAll('text').data(rows.filter((r, i) => i % step === 0)).join('text').attr('class', 'ug-tick')
+      .attr('x', (r) => x(o.x(r)) + x.bandwidth() / 2).attr('y', H - 10).attr('text-anchor', 'middle').text(o.xl);
+    const tip = tipFor(el);
+    svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', (r) => x(o.x(r)) - x.step() * x.paddingInner() / 2).attr('width', x.step())
+      .attr('y', 0).attr('height', H - 30).attr('fill', 'transparent')
+      .on('mousemove', (ev, r) => { rect.attr('opacity', (d) => d === r ? 1 : 0.55); tip.show(ev, o.tipHead(r), o.tipLines(r)); })
+      .on('mouseleave', () => { rect.attr('opacity', 1); tip.hide(); });
+  }
+
+  /* ---------- draw ---------- */
+  function draw() {
+    const M = dash.data('m'), Wk = dash.data('w'), DD = dash.data('dd'), WD = dash.data('wd'), WX = dash.data('wx');
+    const p = dash.params();
+    if (M.status !== 'ok') {
+      const err = M.status === 'error' || M.status === 'declined';
+      for (const id of ['#m-kpis', '#w-kpis']) { const el = $(id); if (err) failLine(el); else { el.replaceChildren(); el.classList.add('dash-skeleton'); } }
+      return;
+    }
+    const mrows = M.data;
+    const stores = [ALL, ...Array.from(new Set(mrows.filter((r) => r.s !== ALL).map((r) => r.s))).sort((a, b) => a.localeCompare(b, 'zh-Hant'))];
+    const store = stores.includes(p.store) ? p.store : ALL;
+    fillSelect(fStore, stores.map((s) => ({ v: s, t: s })), store);
+
+    const smonths = mrows.filter((r) => r.s === store).sort((a, b) => b.mo.localeCompare(a.mo));
+    const maxK = d3.max(mrows.filter((r) => r.s === ALL), (r) => r.k);
+    let month = p.month;
+    if (!smonths.some((r) => r.mo === month)) {
+      const full = smonths.find((r) => store !== ALL || r.k === maxK);
+      month = (full || smonths[0]).mo;
+    }
+    fillSelect(fMonth, smonths.map((r) => ({ v: r.mo, t: r.mo.slice(0, 4) + ' 年 ' + moL(r.mo) + (r.inprog ? '（進行中）' : '') })), month);
+    const R = mrows.find((r) => r.s === store && r.mo === month);
+    const wR = { s: store, mo: month };
+
+    // notice
+    const notice = $('#notice');
+    if (store === ALL && R.k < maxK) { notice.hidden = false; notice.textContent = `${moL(month)}目前只有 ${R.k} 家門市有資料，全部門市的數字只包含這些門市。`; }
+    else if (R.inprog) { notice.hidden = false; notice.textContent = `${moL(month)}資料統計至 ${dL(R.last)}，月增減以日均比較。`; }
+    else notice.hidden = true;
+
+    // takeaway
+    const take = $('#take'); take.replaceChildren();
+    take.append(txt(`${store}・${moL(month)}營業淨額 `), mk('b', 'm', 'n', wR, fmt(R.n)), txt(' 元'));
+    if (R.ch_nd != null) {
+      take.append(txt('，日均較上月 '), (() => { const e = mk('b', 'm', 'ch_nd', wR, sp(R.ch_nd)); tone(e, R.ch_nd); return e; })());
+      const tcBig = Math.abs(R.eff_tc) >= Math.abs(R.eff_aov);
+      take.append(txt(tcBig ? '，主要來自來客數變化（' : '，主要來自客單價變化（'),
+        mk('span', 'm', tcBig ? 'ch_tcd' : 'ch_aov', wR, sp(tcBig ? R.ch_tcd : R.ch_aov)), txt('）'));
+    }
+    take.append(txt('；目標達成 '), mk('b', 'm', 'ach', wR, p1(R.ach)), txt('。'));
+
+    if (tab === 'monthly') drawMonthly(mrows, R, wR, store, month);
+    if (tab === 'weekly') drawWeekly(Wk, store);
+    if (tab === 'trend') drawTrend(DD, WD, WX, mrows, store, month);
+    if (tab === 'stores') drawStores(mrows, store, month);
+  }
+
+  function drawMonthly(mrows, R, wR, store, month) {
+    const k = $('#m-kpis'); k.classList.remove('dash-skeleton'); k.replaceChildren(
+      tile('營業淨額（元）', 'm', wR, 'n', fmt(R.n), [txt('日均 '), mk('span', 'm', 'nd', wR, fmt(R.nd)), txt('・較上月 '), chg('m', wR, 'ch_nd', R.ch_nd)]),
+      tile('來客數', 'm', wR, 'tc', fmt(R.tc), [txt('日均 '), mk('span', 'm', 'tcd', wR, fmt(R.tcd)), txt('・較上月 '), chg('m', wR, 'ch_tcd', R.ch_tcd)]),
+      tile('客單價（元）', 'm', wR, 'aov', f1(R.aov), [txt('較上月 '), chg('m', wR, 'ch_aov', R.ch_aov)]),
+      tile('目標達成率', 'm', wR, 'ach', p1(R.ach), [txt('較上月 '), chg('m', wR, 'd_ach', R.d_ach, true, spp)]),
+      tile('外送占比', 'm', wR, 'sh_del', p1(R.sh_del), [txt('較上月 '), chg('m', wR, 'd_sh_del', R.d_sh_del, false, spp)]),
+      tile('每工時杯數', 'm', wR, 'prod', f1(R.prod), [txt('目標 22・較上月 '), chg('m', wR, 'd_prod', R.d_prod, true, (v) => (v >= 0 ? '+' : '') + v.toFixed(1))]),
+    );
+
+    // gap
+    const gap = $('#m-gap'); gap.replaceChildren();
+    const kv = (label, field, text, big, goodUp) => {
+      const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd'); const v = mk('span', 'm', field, wR, text); if (big) v.className = 'big';
+      if (goodUp !== undefined) tone(v, R[field], goodUp);
+      dd.append(v); gap.append(dt, dd);
+    };
+    if (R.inprog) {
+      $('#m-gap-h').textContent = '本月進度';
+      $('#m-gap-note').textContent = `統計至 ${dL(R.last)}，還剩 ${R.left} 天；月目標以每日營業目標 × 當月天數估算。`;
+      kv('每天需做到', 'need', fmt(R.need), true);
+      kv('目前營業淨額', 'n', fmt(R.n));
+      kv('至今目標', 't', fmt(R.t));
+      kv('落後／超前', 'gap', sm(R.gap), false, true);
+      kv('全月目標（估）', 'tfull', fmt(R.tfull));
+    } else {
+      $('#m-gap-h').textContent = '目標達成';
+      $('#m-gap-note').textContent = '營業淨額對照每日營業目標的加總。';
+      kv('目標達成率', 'ach', p1(R.ach), true);
+      kv('營業淨額', 'n', fmt(R.n));
+      kv('營業目標', 't', fmt(R.t));
+      kv('差異', 'gap', sm(R.gap), false, true);
+    }
+
+    // bridge
+    const br = $('#m-bridge'); br.replaceChildren();
+    if (R.nd_p == null) { const n = document.createElement('p'); n.className = 'ug-note'; n.textContent = '沒有上月資料可比較。'; n.style.gridColumn = '1/-1'; br.append(n); }
+    else {
+      const items = [['上月日均', 'nd_p', R.nd_p, 'base'], ['來客數影響', 'eff_tc', R.eff_tc, 'eff'], ['客單價影響', 'eff_aov', R.eff_aov, 'eff'], ['本月日均', 'nd', R.nd, 'base']];
+      const mx = Math.max(R.nd_p, R.nd);
+      const emx = Math.max(Math.abs(R.eff_tc), Math.abs(R.eff_aov), 1);
+      for (const [label, field, v, kind] of items) {
+        const l = document.createElement('div'); l.textContent = label; l.className = 'ug-lbl';
+        const track = document.createElement('div'); track.className = 'track';
+        const bar = document.createElement('div'); bar.className = 'bar';
+        if (kind === 'base') { bar.style.width = (v / mx * 100) + '%'; bar.style.background = 'var(--cds-chart-muted)'; }
+        else {
+          bar.style.position = 'absolute'; bar.style.width = (Math.abs(v) / emx * 50) + '%';
+          bar.style.left = v >= 0 ? '50%' : (50 - Math.abs(v) / emx * 50) + '%';
+          bar.style.background = v >= 0 ? dash.colors[0] : 'var(--cds-chart-status-critical)';
+          const mid = document.createElement('div'); mid.style.cssText = 'position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--cds-chart-axis)'; track.append(mid);
+        }
+        track.append(bar);
+        const val = mk('div', 'm', field, wR, kind === 'base' ? fmt(v) : sm(v));
+        if (kind === 'eff') tone(val, v);
+        br.append(l, track, val);
+      }
+    }
+
+    // channels
+    const stack = $('#m-stack'); stack.replaceChildren();
+    CH.forEach((c, i) => { const s = document.createElement('span'); s.style.width = (R['sh_' + c.k] * 100) + '%'; s.style.background = dash.colors[i]; s.title = c.name; stack.append(s); });
+    const tb = $('#m-ch tbody'); tb.replaceChildren();
+    CH.forEach((c, i) => {
+      const tr = document.createElement('tr');
+      const td0 = document.createElement('td'); const sw = document.createElement('span'); sw.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:${dash.colors[i]}`; td0.append(sw, txt(c.name));
+      const td = (el) => { const t = document.createElement('td'); t.append(el); return t; };
+      const chEl = R['ch_' + AMT[c.k] + '_d'] == null ? txt('—') : (() => { const e = mk('span', 'm', 'ch_' + AMT[c.k] + '_d', wR, sp(R['ch_' + AMT[c.k] + '_d'])); tone(e, R['ch_' + AMT[c.k] + '_d']); return e; })();
+      tr.append(td0, td(mk('span', 'm', AMT[c.k], wR, fmt(R[AMT[c.k]]))), td(mk('span', 'm', 'sh_' + c.k, wR, p1(R['sh_' + c.k]))), td(mk('span', 'm', CNT[c.k], wR, fmt(R[CNT[c.k]]))), td(chEl));
+      tb.append(tr);
+    });
+
+    // fee
+    const fee = $('#m-fee'); fee.replaceChildren();
+    const fkv = (label, field, text, big, cls) => {
+      const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd'); const v = mk('span', 'm', field, wR, text); if (big) v.className = 'big'; if (cls) v.classList.add(cls);
+      dd.append(v); fee.append(dt, dd);
+    };
+    fkv('抽成後實收（估）', 'rcv', fmt(R.rcv), true);
+    fkv('營業淨額', 'n', fmt(R.n));
+    fkv('Uber Eats 營業額', 'uba', fmt(R.uba));
+    fkv('Uber Eats 抽成 33%', 'ub_fee', '−' + fmt(R.ub_fee), false, 'down');
+    fkv('foodpanda 營業額', 'fpa', fmt(R.fpa));
+    fkv('foodpanda 抽成 31%', 'fp_fee', '−' + fmt(R.fp_fee), false, 'down');
+
+    // table
+    const rows = sortRows('m-table', mrows.filter((r) => r.mo === month && r.s !== ALL));
+    const body = $('#m-table tbody'); body.replaceChildren();
+    for (const r of rows) {
+      const tr = document.createElement('tr'); tr.dataset.key = enc(r.s) + ',' + enc(r.mo);
+      if (r.s === store) tr.className = 'sel';
+      const cells = [r.s, fmt(r.n), p1(r.ach), r.ch_nd == null ? '—' : sp(r.ch_nd), fmt(r.tc), f1(r.aov), p1(r.sh_od), p1(r.sh_del), f1(r.prod)];
+      cells.forEach((c, i) => { const td = document.createElement('td'); td.textContent = c; if (i === 3) tone(td, r.ch_nd); if (i === 2) tone(td, r.ach - 1); tr.append(td); });
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => dash.setParams({ store: r.s }));
+      body.append(tr);
+    }
+    if (!rows.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 9; td.textContent = '此月份沒有門市資料。'; tr.append(td); body.append(tr); }
+  }
+
+  function drawWeekly(Wk, store) {
+    const k = $('#w-kpis');
+    if (Wk.status !== 'ok') { if (Wk.status === 'error') failLine(k); else k.classList.add('dash-skeleton'); return; }
+    k.classList.remove('dash-skeleton');
+    const wrows = Wk.data;
+    const maxK = d3.max(wrows.filter((r) => r.s === ALL), (r) => r.k);
+    const weeks = wrows.filter((r) => r.s === store).sort((a, b) => b.wk.localeCompare(a.wk));
+    if (!weeks.length) { k.replaceChildren(); return; }
+    let week = dash.params().week;
+    if (!weeks.some((r) => r.wk === week)) week = weeks[0].wk;
+    const span = (r) => dL(r.wk) + '–' + dL(r.days < 7 && r.last < r.wkend ? r.last : r.wkend);
+    fillSelect(fWeek, weeks.map((r) => ({ v: r.wk, t: span(r) + (r.last < r.wkend ? `（進行中，${r.days} 天）` : r.days < 7 ? `（${r.days} 天有資料）` : '') + (store === ALL && r.k < maxK ? `（${r.k} 家）` : '') })), week);
+    const R = weeks.find((r) => r.wk === week), wR = { s: store, wk: week };
+    const basis = $('#w-basis');
+    basis.textContent = R.pdays
+      ? `所有比較都用日均：本週 ${span(R)} 共 ${R.days} 天，對照上週相同星期幾的 ${R.pdays} 天。`
+      : '上週沒有相同星期幾的資料可比較。';
+    k.replaceChildren(
+      tile('日均營業淨額（元）', 'w', wR, 'nd', fmt(R.nd), [txt('較上週同期 '), chg('w', wR, 'ch_nd', R.ch_nd), txt('・本週合計 '), mk('span', 'w', 'n', wR, fmt(R.n))]),
+      tile('日均來客數', 'w', wR, 'tcd', fmt(R.tcd), [txt('較上週同期 '), chg('w', wR, 'ch_tcd', R.ch_tcd)]),
+      tile('客單價（元）', 'w', wR, 'aov', f1(R.aov), [txt('較上週同期 '), chg('w', wR, 'ch_aov', R.ch_aov)]),
+      tile('目標達成率', 'w', wR, 'ach', p1(R.ach), [txt('營業目標 '), mk('span', 'w', 't', wR, fmt(R.t))]),
+      tile('外送占比', 'w', wR, 'sh_del', p1(R.sh_del), [txt('較上週同期 '), chg('w', wR, 'd_sh_del', R.d_sh_del, false, spp)]),
+    );
+    const tb = $('#w-ch tbody'); tb.replaceChildren();
+    const td = (el) => { const t = document.createElement('td'); t.append(el); return t; };
+    CH.forEach((c, i) => {
+      const a = AMT[c.k] + '_d';
+      const tr = document.createElement('tr');
+      const td0 = document.createElement('td'); const sw = document.createElement('span'); sw.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:${dash.colors[i]}`; td0.append(sw, txt(c.name));
+      const prev = R[a + '_p'] == null ? txt('—') : mk('span', 'w', a + '_p', wR, fmt(R[a + '_p']));
+      const ch = R['ch_' + a] == null ? txt('—') : (() => { const e = mk('span', 'w', 'ch_' + a, wR, sp(R['ch_' + a])); tone(e, R['ch_' + a]); return e; })();
+      tr.append(td0, td(mk('span', 'w', a, wR, fmt(R[a]))), td(prev), td(ch), td(mk('span', 'w', 'sh_' + c.k, wR, p1(R['sh_' + c.k]))));
+      tb.append(tr);
+    });
+    const rows = sortRows('w-table', wrows.filter((r) => r.wk === week && r.s !== ALL));
+    const body = $('#w-table tbody'); body.replaceChildren();
+    for (const r of rows) {
+      const tr = document.createElement('tr'); tr.dataset.key = enc(r.s) + ',' + enc(r.wk);
+      if (r.s === store) tr.className = 'sel';
+      const cells = [r.s, fmt(r.nd), r.ch_nd == null ? '—' : sp(r.ch_nd), fmt(r.tcd), r.ch_tcd == null ? '—' : sp(r.ch_tcd), f1(r.aov), r.ch_aov == null ? '—' : sp(r.ch_aov), p1(r.ach)];
+      cells.forEach((c, i) => {
+        const t = document.createElement('td'); t.textContent = c;
+        if (i === 2) tone(t, r.ch_nd); if (i === 4) tone(t, r.ch_tcd); if (i === 6) tone(t, r.ch_aov); if (i === 7) tone(t, r.ach - 1);
+        tr.append(t);
+      });
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => dash.setParams({ store: r.s }));
+      body.append(tr);
+    }
+  }
+
+  function drawTrend(DD, WD, WX, mrows, store, month) {
+    // daily
+    const el = $('#t-daily');
+    if (DD.status === 'ok') {
+      const rows = DD.data.filter((r) => r.s === store && r.dt.slice(0, 7) === month).sort((a, b) => a.dt.localeCompare(b.dt));
+      const isWe = (dt) => { const d = new Date(dt + 'T00:00:00Z').getUTCDay(); return d === 0 || d === 6; };
+      const lg = $('#t-daily-lg'); lg.replaceChildren();
+      [[dash.colors[0], '平日'], [dash.colors[1], '週末'], ['var(--cds-chart-reference)', '營業目標（虛線）']].forEach(([c, n]) => { const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = c; s.append(i, txt(n)); lg.append(s); });
+      const W = ['日', '一', '二', '三', '四', '五', '六'];
+      bars(el, rows, {
+        aria: '每日營業淨額', x: (r) => r.dt, y: (r) => r.n, ref: (r) => r.t, xl: (r) => dL(r.dt),
+        color: (r) => isWe(r.dt) ? dash.colors[1] : dash.colors[0],
+        tipHead: (r) => `${dL(r.dt)}（${W[new Date(r.dt + 'T00:00:00Z').getUTCDay()]}）${r.w ? '・' + r.w : ''}`,
+        tipLines: (r) => [[null, '營業淨額', fmt(r.n)], [null, '營業目標', fmt(r.t)], [null, '來客數', fmt(r.tc)], [null, '客單價', f1(r.n / r.tc)]],
+      });
+    } else if (DD.status === 'error') failLine(el); else el.classList.add('dash-skeleton');
+
+    // weekday
+    const e2 = $('#t-wkday');
+    if (WD.status === 'ok') {
+      const rows = WD.data.filter((r) => r.s === store && r.mo === month).sort((a, b) => a.i - b.i);
+      bars(e2, rows, {
+        aria: '星期別日均營業淨額', x: (r) => r.wd, y: (r) => r.avg, xl: (r) => r.wd, h: 240,
+        color: (r) => r.i >= 6 ? dash.colors[1] : dash.colors[0],
+        tipHead: (r) => r.wd, tipLines: (r) => [[null, '日均營業淨額', fmt(r.avg)], [null, '天數', r.cnt + ' 天']],
+      });
+    } else if (WD.status === 'error') failLine(e2); else e2.classList.add('dash-skeleton');
+
+    // weather
+    const e3 = $('#t-wx');
+    if (WX.status === 'ok') {
+      const rows = WX.data.filter((r) => r.s === store).sort((a, b) => a.o - b.o);
+      bars(e3, rows, {
+        aria: '天氣別日均營業淨額', x: (r) => r.wx, y: (r) => r.avg, xl: (r) => r.wx, h: 240,
+        color: (r) => r.rel < 0 ? 'var(--cds-chart-muted)' : dash.colors[0],
+        tipHead: (r) => r.wx, tipLines: (r) => [[null, '日均營業淨額', fmt(r.avg)], [null, '與整體日均', sp(r.rel)], [null, '天數', r.cnt + ' 天']],
+      });
+    } else if (WX.status === 'error') failLine(e3); else e3.classList.add('dash-skeleton');
+
+    // channel monthly stacked
+    const e4 = $('#t-ch'); e4.replaceChildren(); e4.classList.remove('dash-skeleton');
+    const lg = $('#t-ch-lg'); lg.replaceChildren();
+    CH.forEach((c, i) => { const s = document.createElement('span'); const ii = document.createElement('i'); ii.style.background = dash.colors[i]; s.append(ii, txt(c.name)); lg.append(s); });
+    const rows = mrows.filter((r) => r.s === store).sort((a, b) => a.mo.localeCompare(b.mo));
+    if (!rows.length) return;
+    const W = Math.max(280, e4.clientWidth || 600), H = 260;
+    const svg = d3.select(e4).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '各通路日均營業額');
+    const keys = ['ina_d', 'oda_d', 'uba_d', 'fpa_d'];
+    const y = d3.scaleLinear([0, d3.max(rows, (r) => r.nd) * 1.05], [H - 30, 12]).nice();
+    const ticks = y.ticks(4), ml = measure(svg, ticks.map(compact)) + 12;
+    const x = d3.scaleBand(rows.map((r) => r.mo), [ml, W - 8]).padding(0.35);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W - 8).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('class', 'ug-tick').attr('x', ml - 8).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').text(compact);
+    const bw = Math.min(56, x.bandwidth());
+    const st = d3.stack().keys(keys)(rows);
+    st.forEach((layer, i) => {
+      svg.append('g').selectAll('rect').data(layer).join('rect')
+        .attr('x', (d) => x(d.data.mo) + (x.bandwidth() - bw) / 2).attr('width', bw)
+        .attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1]) - 1)).attr('fill', dash.colors[i]);
+    });
+    svg.append('g').selectAll('text').data(rows).join('text').attr('class', 'ug-tick').attr('x', (r) => x(r.mo) + x.bandwidth() / 2).attr('y', H - 10).attr('text-anchor', 'middle').text((r) => moL(r.mo) + (r.inprog ? '*' : ''));
+    const tip = tipFor(e4);
+    svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', (r) => x(r.mo) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 30).attr('fill', 'transparent')
+      .on('mousemove', (ev, r) => tip.show(ev, moL(r.mo) + '・日均' + (r.inprog ? '（進行中）' : ''), CH.map((c, i) => [dash.colors[i], c.name, fmt(r[keys[i]]) + '（' + p1(r['sh_' + c.k]) + '）'])))
+      .on('mouseleave', () => tip.hide());
+  }
+
+  function drawStores(mrows, store, month) {
+    // line chart
+    const el = $('#s-line'); el.replaceChildren(); el.classList.remove('dash-skeleton');
+    const shops = Array.from(new Set(mrows.filter((r) => r.s !== ALL).map((r) => r.s)));
+    const months = Array.from(new Set(mrows.map((r) => r.mo))).sort();
+    const series = shops.map((s) => ({ s, pts: mrows.filter((r) => r.s === s).sort((a, b) => a.mo.localeCompare(b.mo)) }));
+    $('#s-line-note').textContent = store === ALL ? '上方選擇門市即可凸顯該店；滑過線條可看各店數字。' : `凸顯：${store}。滑過線條可看各店數字。`;
+    const W = Math.max(280, el.clientWidth || 600), H = 300;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '各店日均營業淨額走勢');
+    const vals = mrows.filter((r) => r.s !== ALL).map((r) => r.nd);
+    const y = d3.scaleLinear([d3.min(vals) * 0.9, d3.max(vals) * 1.05], [H - 30, 12]).nice();
+    const ticks = y.ticks(5), ml = measure(svg, ticks.map(compact)) + 12;
+    const endW = store !== ALL ? measure(svg, [short(store) + ' ' + compact(d3.max(vals))]) + 16 : 16;
+    const x = d3.scalePoint(months, [ml + 10, W - endW]);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W - 8).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('class', 'ug-tick').attr('x', ml - 8).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').text(compact);
+    svg.append('g').selectAll('text').data(months).join('text').attr('class', 'ug-tick').attr('x', (m) => x(m)).attr('y', H - 10).attr('text-anchor', 'middle').text(moL);
+    const line = d3.line().x((r) => x(r.mo)).y((r) => y(r.nd));
+    const ordered = series.slice().sort((a, b) => (a.s === store) - (b.s === store));
+    const paths = svg.append('g').selectAll('path').data(ordered).join('path').attr('d', (d) => line(d.pts)).attr('fill', 'none')
+      .attr('stroke', (d) => d.s === store ? dash.colors[0] : 'var(--cds-chart-muted)').attr('stroke-width', (d) => d.s === store ? 2.5 : 1.5)
+      .attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
+    const sel = series.find((d) => d.s === store);
+    if (sel) {
+      svg.append('g').selectAll('circle').data(sel.pts).join('circle').attr('cx', (r) => x(r.mo)).attr('cy', (r) => y(r.nd)).attr('r', 3.5).attr('fill', dash.colors[0]);
+      const last = sel.pts[sel.pts.length - 1];
+      svg.append('text').attr('class', 'ug-tick').style('fill', 'var(--color-fg)').attr('x', x(last.mo) + 8).attr('y', y(last.nd)).attr('dy', '0.32em').text(short(store) + ' ' + compact(last.nd));
+    }
+    const pts = series.flatMap((d) => d.pts);
+    const dl = d3.Delaunay.from(pts, (r) => x(r.mo), (r) => y(r.nd));
+    const dot = svg.append('circle').attr('r', 4).attr('fill', 'var(--color-fg)').attr('opacity', 0);
+    const tip = tipFor(el);
+    svg.append('rect').attr('x', ml).attr('y', 0).attr('width', W - ml).attr('height', H - 30).attr('fill', 'transparent')
+      .on('mousemove', (ev) => {
+        const [mx, my] = d3.pointer(ev); const r = pts[dl.find(mx, my)];
+        dot.attr('cx', x(r.mo)).attr('cy', y(r.nd)).attr('opacity', 1);
+        paths.attr('stroke', (d) => d.s === r.s ? dash.colors[0] : (d.s === store ? dash.colors[0] : 'var(--cds-chart-muted)')).attr('opacity', (d) => d.s === r.s || d.s === store ? 1 : 0.5);
+        tip.show(ev, r.s + '・' + moL(r.mo), [[null, '日均營業淨額', fmt(r.nd)], [null, '較上月', r.ch_nd == null ? '—' : sp(r.ch_nd)]]);
+      })
+      .on('mouseleave', () => { dot.attr('opacity', 0); paths.attr('opacity', 1).attr('stroke', (d) => d.s === store ? dash.colors[0] : 'var(--cds-chart-muted)'); tip.hide(); });
+
+    // scatter
+    const e2 = $('#s-scatter'); e2.replaceChildren(); e2.classList.remove('dash-skeleton');
+    const rows = mrows.filter((r) => r.mo === month && r.s !== ALL);
+    if (rows.length) {
+      const W2 = Math.max(280, e2.clientWidth || 500), H2 = 280;
+      const sv = d3.select(e2).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W2} ${H2}`).attr('role', 'img').attr('aria-label', '來客數與客單價');
+      const yv = d3.scaleLinear(d3.extent(rows, (r) => r.aov), [H2 - 44, 14]).nice();
+      const yt = yv.ticks(4), ml2 = measure(sv, yt.map((v) => fmt(v))) + 12;
+      const xv = d3.scaleLinear(d3.extent(rows, (r) => r.tcd), [ml2 + 8, W2 - 16]).nice();
+      const xt = xv.ticks(Math.max(2, Math.floor((W2 - ml2) / 70)));
+      sv.append('g').selectAll('line').data(yt).join('line').attr('x1', ml2).attr('x2', W2 - 8).attr('y1', (d) => yv(d)).attr('y2', (d) => yv(d)).attr('stroke', 'var(--cds-chart-grid)');
+      sv.append('g').selectAll('text').data(yt).join('text').attr('class', 'ug-tick').attr('x', ml2 - 8).attr('y', (d) => yv(d)).attr('dy', '0.32em').attr('text-anchor', 'end').text((v) => fmt(v));
+      sv.append('g').selectAll('text').data(xt).join('text').attr('class', 'ug-tick').attr('x', (d) => xv(d)).attr('y', H2 - 26).attr('text-anchor', 'middle').text((v) => fmt(v));
+      sv.append('text').attr('class', 'ug-tick').attr('x', W2 - 8).attr('y', H2 - 6).attr('text-anchor', 'end').text('日均來客數 →');
+      const c = sv.append('g').selectAll('circle').data(rows).join('circle').attr('cx', (r) => xv(r.tcd)).attr('cy', (r) => yv(r.aov)).attr('r', (r) => r.s === store ? 7 : 5.5)
+        .attr('fill', (r) => r.s === store ? dash.colors[0] : 'var(--cds-chart-muted)').attr('stroke', 'var(--color-panel)').attr('stroke-width', 1.5);
+      const sr = rows.find((r) => r.s === store);
+      if (sr) {
+        const right = xv(sr.tcd) > W2 * 0.7;
+        sv.append('text').attr('class', 'ug-tick').style('fill', 'var(--color-fg)').attr('x', xv(sr.tcd) + (right ? -10 : 10)).attr('y', yv(sr.aov)).attr('dy', '0.32em').attr('text-anchor', right ? 'end' : 'start').text(short(sr.s));
+      }
+      const tip2 = tipFor(e2);
+      c.style('cursor', 'pointer').on('mousemove', (ev, r) => tip2.show(ev, r.s, [[null, '日均來客數', fmt(r.tcd)], [null, '客單價', f1(r.aov)], [null, '日均營業淨額', fmt(r.nd)]]))
+        .on('mouseleave', () => tip2.hide()).on('click', (ev, r) => dash.setParams({ store: r.s }));
+    }
+
+    // rank
+    const ranked = rows.filter((r) => r.ch_nd != null).sort((a, b) => b.ch_nd - a.ch_nd);
+    const fillList = (ol, list) => {
+      ol.replaceChildren();
+      if (!list.length) { const li = document.createElement('li'); li.textContent = '沒有上月資料可比較'; ol.append(li); return; }
+      for (const r of list) {
+        const li = document.createElement('li'); li.append(txt(r.s));
+        const v = mk('span', 'm', 'ch_nd', { s: r.s, mo: r.mo }, sp(r.ch_nd)); tone(v, r.ch_nd); li.append(v); ol.append(li);
+      }
+    };
+    fillList($('#s-top'), ranked.slice(0, 5));
+    fillList($('#s-bot'), ranked.slice().reverse().slice(0, 5));
+  }
+
+  dash.onData(draw);
+})();
+
+}
+</script>
+</body>
+</html>
