@@ -80,6 +80,8 @@ html,body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:
 .ug-t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:var(--cds-font-size-body)}
 .ug-t th,.ug-t td{padding:8px 10px;border-bottom:1px solid var(--color-border-line);text-align:right;white-space:nowrap}
 .ug-t th:first-child,.ug-t td:first-child{text-align:left}
+.ug-t th.grp{text-align:center;border-bottom:1px solid var(--color-border-line)}
+.ug-t thead tr+tr th{top:33px}
 .ug-t th{position:sticky;top:0;background:var(--color-panel);font-weight:var(--cds-font-weight-medium);color:var(--color-fg-muted);cursor:pointer;user-select:none;font-size:var(--cds-font-size-caption)}
 .ug-t tr.sel td{font-weight:var(--cds-font-weight-medium)}
 .ug-kv{display:grid;grid-template-columns:auto auto;gap:6px 16px;margin:0;font-variant-numeric:tabular-nums}
@@ -158,7 +160,7 @@ html,body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:
       </div>
       <div class="ug-card" id="m-fee-card">
         <h3>外送抽成估算</h3>
-        <p class="ug-note">以 Uber Eats 抽成 33%、foodpanda 抽成 31% 估算，實際費率請以合約為準。</p>
+        <p class="ug-note">以 Uber Eats 抽成 33%、foodpanda 抽成 33% 估算，實際費率請以合約為準。</p>
         <dl class="ug-kv" id="m-fee"></dl>
       </div>
     </div>
@@ -188,9 +190,19 @@ html,body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:
     <div class="ug-grid">
       <div class="ug-card" id="w-ch-card">
         <h3>各通路日均比較上週</h3>
-        <p class="ug-note">本週各通路日均營業額，對照上週相同星期幾的日均。</p>
-        <div class="ug-tw"><table class="ug-t" id="w-ch"><thead><tr><th>通路</th><th>本週日均</th><th>上週同期日均</th><th>增減</th><th>本週占比</th></tr></thead><tbody></tbody></table></div>
+        <p class="ug-note">本週各通路日均營業額與訂單量，對照上週相同星期幾的日均。現場單數＝來客數扣除 Uber Eats、foodpanda、ODO 單數。</p>
+        <div class="ug-tw"><table class="ug-t" id="w-ch"><thead><tr><th rowspan="2">通路</th><th colspan="3" class="grp">日均營業額（元）</th><th colspan="3" class="grp">日均訂單量（單）</th><th rowspan="2">本週營業額占比</th></tr><tr><th>本週</th><th>上週同期</th><th>增減</th><th>本週</th><th>上週同期</th><th>增減</th></tr></thead><tbody></tbody></table></div>
       </div>
+    </div>
+    <div class="ug-card" id="w-day-card">
+      <h3>每日 WOW 差異分析</h3>
+      <p class="ug-note">本週每一天對照上週同一天（週一對週一……週日對週日）。長條為營業淨額，上方標示差異 %。</p>
+      <div class="ug-legend" id="w-day-lg"></div>
+      <div class="ug-chart" id="w-day-chart" data-source="wdd"></div>
+      <div class="ug-tw"><table class="ug-t" id="w-day" data-source="wdd" data-row-key="s,dt"><thead>
+        <tr><th rowspan="2" data-field="dt">日期</th><th colspan="4" class="grp">營業淨額（元）</th><th colspan="3" class="grp">來客數</th><th colspan="3" class="grp">客單價（元）</th><th colspan="2" class="grp">外送單數</th></tr>
+        <tr><th data-field="n">本週</th><th data-field="n_p">上週同日</th><th data-field="d_n">差異</th><th data-field="ch_n">WOW</th><th data-field="tc">本週</th><th data-field="tc_p">上週同日</th><th data-field="ch_tc">WOW</th><th data-field="aov">本週</th><th data-field="aov_p">上週同日</th><th data-field="ch_aov">WOW</th><th data-field="dln">本週</th><th data-field="ch_dln">WOW</th></tr>
+      </thead><tbody></tbody></table></div>
     </div>
     <div class="ug-card" id="w-table-card">
       <h3>各門市本週表現（日均）</h3>
@@ -344,7 +356,7 @@ dash.calc('dd', {
 dash.calc('m', {
   inputs: ['dd'],
   title: '月彙總',
-  description: '每家門市（含全部門市）每月的合計、比率、通路結構、抽成估算（UB 33%、FP 31%）與上月比較；月增減用日均計算。',
+  description: '每家門市（含全部門市）每月的合計、比率、通路結構、抽成估算（UB 33%、FP 33%）與上月比較；月增減用日均計算。',
   fn: (dd) => {
     const F = ['n','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d','ch'];
     const g = new Map();
@@ -364,7 +376,7 @@ dash.calc('m', {
       a.nd = a.n / a.days; a.tcd = a.tc / a.days;
       a.sh_in = a.ina / a.n; a.sh_od = a.oda / a.n; a.sh_ub = a.uba / a.n; a.sh_fp = a.fpa / a.n; a.sh_del = (a.uba + a.fpa) / a.n;
       a.ina_d = a.ina / a.days; a.oda_d = a.oda / a.days; a.uba_d = a.uba / a.days; a.fpa_d = a.fpa / a.days;
-      a.ub_fee = a.uba * 0.33; a.fp_fee = a.fpa * 0.31; a.rcv = a.n - a.ub_fee - a.fp_fee;
+      a.ub_fee = a.uba * 0.33; a.fp_fee = a.fpa * 0.33; a.rcv = a.n - a.ub_fee - a.fp_fee;
       a.dim = dim; a.inprog = ld < dim; a.left = dim - ld;
       a.tfull = a.t / a.days * dim; a.need = a.inprog ? (a.tfull - a.n) / (dim - ld) : null;
     }
@@ -423,9 +435,39 @@ dash.calc('w', {
       a.ch_nd = ch(a.nd, a.nd_p); a.ch_tcd = ch(a.tcd, a.tcd_p); a.ch_aov = ch(a.aov, a.aov_p);
       a.ch_ina_d = ch(a.ina_d, a.ina_d_p); a.ch_oda_d = ch(a.oda_d, a.oda_d_p); a.ch_uba_d = ch(a.uba_d, a.uba_d_p); a.ch_fpa_d = ch(a.fpa_d, a.fpa_d_p);
       a.d_sh_del = (q && a.n_p) ? a.sh_del - (a.uba_p + a.fpa_p) / a.n_p : null;
+      a.inn = a.tc - a.ubn - a.fpn - a.odn;
+      const inn_p = a.tc_p - a.ubn_p - a.fpn_p - a.odn_p;
+      a.inn_d = a.inn / a.days; a.odn_d = a.odn / a.days; a.ubn_d = a.ubn / a.days; a.fpn_d = a.fpn / a.days;
+      a.inn_d_p = q ? inn_p / q : null; a.odn_d_p = q ? a.odn_p / q : null; a.ubn_d_p = q ? a.ubn_p / q : null; a.fpn_d_p = q ? a.fpn_p / q : null;
+      a.ch_inn_d = ch(a.inn_d, a.inn_d_p); a.ch_odn_d = ch(a.odn_d, a.odn_d_p); a.ch_ubn_d = ch(a.ubn_d, a.ubn_d_p); a.ch_fpn_d = ch(a.fpn_d, a.fpn_d_p);
       for (const f of F) delete a[f + '_p'];
     }
     return rows;
+  },
+});
+
+dash.calc('wdd', {
+  inputs: ['dd'],
+  title: '每日 WOW',
+  description: '每家門市（含全部門市）每一天對照上週同一天（日期減 7 天）的營業淨額、來客數、客單價與外送單數差異。',
+  fn: (dd) => {
+    const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10);
+    const L = ['週一','週二','週三','週四','週五','週六','週日'];
+    const byKey = new Map(dd.map((r) => [r.s + '|' + r.dt, r]));
+    const ch = (u, v) => (v ? u / v - 1 : null);
+    return dd.map((r) => {
+      const t = Date.parse(r.dt + 'T00:00:00Z'), i = (new Date(t).getUTCDay() + 6) % 7;
+      const pdt = iso(t - 7 * DAY), p = byKey.get(r.s + '|' + pdt);
+      const aov = r.tc ? r.n / r.tc : null, dln = r.ubn + r.fpn;
+      const o = { s: r.s, dt: r.dt, wk: iso(t - i * DAY), i, wd: L[i], w: r.w, pdt, n: r.n, tc: r.tc, aov, dln,
+        n_p: null, tc_p: null, aov_p: null, dln_p: null, d_n: null, ch_n: null, ch_tc: null, ch_aov: null, ch_dln: null };
+      if (p) {
+        o.n_p = p.n; o.tc_p = p.tc; o.aov_p = p.tc ? p.n / p.tc : null; o.dln_p = p.ubn + p.fpn;
+        o.d_n = r.n - p.n; o.ch_n = ch(r.n, p.n); o.ch_tc = ch(r.tc, p.tc);
+        o.ch_aov = (aov != null && o.aov_p) ? aov / o.aov_p - 1 : null; o.ch_dln = ch(dln, o.dln_p);
+      }
+      return o;
+    });
   },
 });
 
@@ -681,7 +723,7 @@ dash.calc('wx', {
     take.append(txt('；目標達成 '), mk('b', 'm', 'ach', wR, p1(R.ach)), txt('。'));
 
     if (tab === 'monthly') drawMonthly(mrows, R, wR, store, month);
-    if (tab === 'weekly') drawWeekly(Wk, store);
+    if (tab === 'weekly') { drawWeekly(Wk, store); drawWowDays(dash.data('wdd'), store); }
     if (tab === 'trend') drawTrend(DD, WD, WX, mrows, store, month);
     if (tab === 'stores') drawStores(mrows, store, month);
   }
@@ -771,7 +813,7 @@ dash.calc('wx', {
     fkv('Uber Eats 營業額', 'uba', fmt(R.uba));
     fkv('Uber Eats 抽成 33%', 'ub_fee', '−' + fmt(R.ub_fee), false, 'down');
     fkv('foodpanda 營業額', 'fpa', fmt(R.fpa));
-    fkv('foodpanda 抽成 31%', 'fp_fee', '−' + fmt(R.fp_fee), false, 'down');
+    fkv('foodpanda 抽成 33%', 'fp_fee', '−' + fmt(R.fp_fee), false, 'down');
 
     // table
     const rows = sortRows('m-table', mrows.filter((r) => r.mo === month && r.s !== ALL));
@@ -820,7 +862,10 @@ dash.calc('wx', {
       const td0 = document.createElement('td'); const sw = document.createElement('span'); sw.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:${dash.colors[i]}`; td0.append(sw, txt(c.name));
       const prev = R[a + '_p'] == null ? txt('—') : mk('span', 'w', a + '_p', wR, fmt(R[a + '_p']));
       const ch = R['ch_' + a] == null ? txt('—') : (() => { const e = mk('span', 'w', 'ch_' + a, wR, sp(R['ch_' + a])); tone(e, R['ch_' + a]); return e; })();
-      tr.append(td0, td(mk('span', 'w', a, wR, fmt(R[a]))), td(prev), td(ch), td(mk('span', 'w', 'sh_' + c.k, wR, p1(R['sh_' + c.k]))));
+      const o = CNT[c.k] + '_d';
+      const oprev = R[o + '_p'] == null ? txt('—') : mk('span', 'w', o + '_p', wR, fmt(R[o + '_p']));
+      const och = R['ch_' + o] == null ? txt('—') : (() => { const e = mk('span', 'w', 'ch_' + o, wR, sp(R['ch_' + o])); tone(e, R['ch_' + o]); return e; })();
+      tr.append(td0, td(mk('span', 'w', a, wR, fmt(R[a]))), td(prev), td(ch), td(mk('span', 'w', o, wR, fmt(R[o]))), td(oprev), td(och), td(mk('span', 'w', 'sh_' + c.k, wR, p1(R['sh_' + c.k]))));
       tb.append(tr);
     });
     const rows = sortRows('w-table', wrows.filter((r) => r.wk === week && r.s !== ALL));
@@ -836,6 +881,62 @@ dash.calc('wx', {
       });
       tr.style.cursor = 'pointer';
       tr.addEventListener('click', () => dash.setParams({ store: r.s }));
+      body.append(tr);
+    }
+  }
+
+  function drawWowDays(D, store) {
+    const chart = $('#w-day-chart'), body = $('#w-day tbody'), lg = $('#w-day-lg');
+    if (D.status !== 'ok') { if (D.status === 'error') failLine(chart); else chart.classList.add('dash-skeleton'); body.replaceChildren(); return; }
+    const week = fWeek.value; if (!week) return;
+    const L = ['週一','週二','週三','週四','週五','週六','週日'];
+    const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10);
+    const got = D.data.filter((r) => r.s === store && r.wk === week);
+    const days = L.map((wd, i) => got.find((r) => r.i === i) || { i, wd, dt: iso(Date.parse(week + 'T00:00:00Z') + i * DAY), empty: true });
+    lg.replaceChildren();
+    [[dash.colors[0], '本週'], ['var(--cds-chart-muted)', '上週同日']].forEach(([c, n]) => { const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = c; s.append(i, txt(n)); lg.append(s); });
+    // chart
+    chart.replaceChildren(); chart.classList.remove('dash-skeleton');
+    const W = Math.max(280, chart.clientWidth || 600), H = 276, B = 46;
+    const svg = d3.select(chart).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '每日營業淨額本週與上週同日比較');
+    const ymax = d3.max(days, (r) => Math.max(r.n || 0, r.n_p || 0)) || 1;
+    const y = d3.scaleLinear([0, ymax * 1.12], [H - B, 16]).nice();
+    const ticks = y.ticks(4), ml = measure(svg, ticks.map(compact)) + 12;
+    const x = d3.scaleBand(L, [ml, W - 8]).padding(0.22);
+    const x1 = d3.scaleBand(['c', 'p'], [0, x.bandwidth()]).padding(0.08);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W - 8).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('class', 'ug-tick').attr('x', ml - 8).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').text(compact);
+    const bw = Math.min(26, x1.bandwidth());
+    const bar = (key, cls, color) => svg.append('g').selectAll('rect').data(days.filter((r) => r[key] != null)).join('rect')
+      .attr('x', (r) => x(r.wd) + x1(cls) + (x1.bandwidth() - bw) / 2).attr('width', bw)
+      .attr('y', (r) => y(r[key])).attr('height', (r) => Math.max(0, y(0) - y(r[key]))).attr('rx', 3).attr('fill', color);
+    bar('n_p', 'p', 'var(--cds-chart-muted)'); bar('n', 'c', dash.colors[0]);
+    svg.append('g').selectAll('text').data(days.filter((r) => r.ch_n != null)).join('text').attr('class', 'ug-tick')
+      .attr('x', (r) => x(r.wd) + x.bandwidth() / 2).attr('y', (r) => y(Math.max(r.n, r.n_p)) - 6).attr('text-anchor', 'middle')
+      .style('fill', (r) => r.ch_n >= 0 ? 'var(--color-ok)' : 'var(--color-bad)').style('font-weight', 600).text((r) => sp(r.ch_n));
+    const xl = svg.append('g').selectAll('text').data(days).join('text').attr('class', 'ug-tick').attr('text-anchor', 'middle');
+    xl.append('tspan').attr('x', (r) => x(r.wd) + x.bandwidth() / 2).attr('y', H - B + 18).text((r) => r.wd);
+    xl.append('tspan').attr('x', (r) => x(r.wd) + x.bandwidth() / 2).attr('y', H - B + 34).text((r) => dL(r.dt));
+    const tip = tipFor(chart);
+    svg.append('g').selectAll('rect').data(days).join('rect').attr('x', (r) => x(r.wd) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', 0).attr('height', H - B).attr('fill', 'transparent')
+      .on('mousemove', (ev, r) => tip.show(ev, `${r.wd} ${dL(r.dt)}${r.w ? '・' + r.w : ''}`, r.empty ? [[null, '', '尚無資料']] : [
+        [dash.colors[0], '本週', fmt(r.n)], ['var(--cds-chart-muted)', '上週同日 ' + (r.pdt ? dL(r.pdt) : ''), r.n_p == null ? '—' : fmt(r.n_p)],
+        [null, 'WOW', r.ch_n == null ? '—' : sp(r.ch_n) + '（' + sm(r.d_n) + '）'], [null, '來客數 WOW', r.ch_tc == null ? '—' : sp(r.ch_tc)], [null, '客單價 WOW', r.ch_aov == null ? '—' : sp(r.ch_aov)]]))
+      .on('mouseleave', () => tip.hide());
+    // table
+    body.replaceChildren();
+    const pc = (v) => v == null ? '—' : sp(v);
+    for (const r of days) {
+      const tr = document.createElement('tr'); tr.dataset.key = enc(store) + ',' + enc(r.dt);
+      const cells = r.empty
+        ? [r.wd + ' ' + dL(r.dt), '尚無資料', '', '', '', '', '', '', '', '', '', '', '']
+        : [r.wd + ' ' + dL(r.dt), fmt(r.n), r.n_p == null ? '—' : fmt(r.n_p), r.d_n == null ? '—' : sm(r.d_n), pc(r.ch_n), fmt(r.tc), r.tc_p == null ? '—' : fmt(r.tc_p), pc(r.ch_tc), r.aov == null ? '—' : f1(r.aov), r.aov_p == null ? '—' : f1(r.aov_p), pc(r.ch_aov), fmt(r.dln), pc(r.ch_dln)];
+      cells.forEach((c, i) => {
+        const t = document.createElement('td'); t.textContent = c;
+        if (!r.empty) { if (i === 3) tone(t, r.d_n); if (i === 4) tone(t, r.ch_n); if (i === 7) tone(t, r.ch_tc); if (i === 10) tone(t, r.ch_aov); if (i === 12) tone(t, r.ch_dln); }
+        else if (i === 1) { t.colSpan = 12; t.style.textAlign = 'left'; t.style.color = 'var(--color-fg-muted)'; }
+        if (!(r.empty && i > 1)) tr.append(t);
+      });
       body.append(tr);
     }
   }
