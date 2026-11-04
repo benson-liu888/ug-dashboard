@@ -381,7 +381,7 @@ dash.calc('m', {
       a.ch_ina_d = ch(a.ina_d, p && p.ina_d); a.ch_oda_d = ch(a.oda_d, p && p.oda_d);
       a.ch_uba_d = ch(a.uba_d, p && p.uba_d); a.ch_fpa_d = ch(a.fpa_d, p && p.fpa_d);
       a.eff_tc = p ? (a.tcd - p.tcd) * p.aov : null; a.eff_aov = p ? (a.aov - p.aov) * a.tcd : null;
-      a.d_nd = p ? a.nd - p.nd : null; a.d_prod = p ? a.prod - p.prod : null;
+      a.d_nd = p ? a.nd - p.nd : null; a.d_prod = (p && a.prod != null && p.prod != null) ? a.prod - p.prod : null;
     }
     return rows;
   },
@@ -693,7 +693,7 @@ dash.calc('wx', {
       tile('客單價（元）', 'm', wR, 'aov', f1(R.aov), [txt('較上月 '), chg('m', wR, 'ch_aov', R.ch_aov)]),
       tile('目標達成率', 'm', wR, 'ach', p1(R.ach), [txt('較上月 '), chg('m', wR, 'd_ach', R.d_ach, true, spp)]),
       tile('外送占比', 'm', wR, 'sh_del', p1(R.sh_del), [txt('較上月 '), chg('m', wR, 'd_sh_del', R.d_sh_del, false, spp)]),
-      tile('每工時杯數', 'm', wR, 'prod', f1(R.prod), [txt('目標 22・較上月 '), chg('m', wR, 'd_prod', R.d_prod, true, (v) => (v >= 0 ? '+' : '') + v.toFixed(1))]),
+      tile('每工時杯數', 'm', wR, 'prod', R.prod == null ? '—' : f1(R.prod), R.prod == null ? [txt('尚未填寫工時')] : [txt('目標 22・較上月 '), chg('m', wR, 'd_prod', R.d_prod, true, (v) => (v >= 0 ? '+' : '') + v.toFixed(1))]),
     );
 
     // gap
@@ -779,7 +779,7 @@ dash.calc('wx', {
     for (const r of rows) {
       const tr = document.createElement('tr'); tr.dataset.key = enc(r.s) + ',' + enc(r.mo);
       if (r.s === store) tr.className = 'sel';
-      const cells = [r.s, fmt(r.n), p1(r.ach), r.ch_nd == null ? '—' : sp(r.ch_nd), fmt(r.tc), f1(r.aov), p1(r.sh_od), p1(r.sh_del), f1(r.prod)];
+      const cells = [r.s, fmt(r.n), p1(r.ach), r.ch_nd == null ? '—' : sp(r.ch_nd), fmt(r.tc), f1(r.aov), p1(r.sh_od), p1(r.sh_del), r.prod == null ? '—' : f1(r.prod)];
       cells.forEach((c, i) => { const td = document.createElement('td'); td.textContent = c; if (i === 3) tone(td, r.ch_nd); if (i === 2) tone(td, r.ach - 1); tr.append(td); });
       tr.style.cursor = 'pointer';
       tr.addEventListener('click', () => dash.setParams({ store: r.s }));
