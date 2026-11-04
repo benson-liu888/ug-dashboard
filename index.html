@@ -321,11 +321,12 @@ dash.calc('dd', {
   title: '每日彙總（含全部門市）',
   description: '每家門市每天的數字，加上全部門市當天的合計；全部門市的天氣取當天最多門市的天氣。',
   fn: (daily) => {
-    const F = ['n','g','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d'];
+    const F = ['n','g','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d','ch'];
     const out = []; const tot = new Map();
     for (const r of daily) {
       const o = { s: r.s, dt: r.dt, w: r.w || '', k: 1 };
       for (const f of F) o[f] = Number(r[f]) || 0;
+      o.ch = o.h ? o.c : 0;
       out.push(o);
       let a = tot.get(r.dt);
       if (!a) { a = { s: '全部門市', dt: r.dt, k: 0, wc: {} }; for (const f of F) a[f] = 0; tot.set(r.dt, a); }
@@ -345,7 +346,7 @@ dash.calc('m', {
   title: '月彙總',
   description: '每家門市（含全部門市）每月的合計、比率、通路結構、抽成估算（UB 33%、FP 31%）與上月比較；月增減用日均計算。',
   fn: (dd) => {
-    const F = ['n','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d'];
+    const F = ['n','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d','ch'];
     const g = new Map();
     for (const r of dd) {
       const mo = r.dt.slice(0, 7), key = r.s + '|' + mo;
@@ -359,7 +360,7 @@ dash.calc('m', {
       const y = +a.mo.slice(0, 4), m = +a.mo.slice(5, 7);
       const dim = new Date(Date.UTC(y, m, 0)).getUTCDate(), ld = +a.last.slice(8, 10);
       a.ina = a.n - a.uba - a.fpa - a.oda; a.inn = a.tc - a.ubn - a.fpn - a.odn;
-      a.aov = a.tc ? a.n / a.tc : null; a.prod = a.h ? a.c / a.h : null; a.ach = a.t ? a.n / a.t : null; a.gap = a.n - a.t;
+      a.aov = a.tc ? a.n / a.tc : null; a.prod = a.h ? a.ch / a.h : null; a.ach = a.t ? a.n / a.t : null; a.gap = a.n - a.t;
       a.nd = a.n / a.days; a.tcd = a.tc / a.days;
       a.sh_in = a.ina / a.n; a.sh_od = a.oda / a.n; a.sh_ub = a.uba / a.n; a.sh_fp = a.fpa / a.n; a.sh_del = (a.uba + a.fpa) / a.n;
       a.ina_d = a.ina / a.days; a.oda_d = a.oda / a.days; a.uba_d = a.uba / a.days; a.fpa_d = a.fpa / a.days;
