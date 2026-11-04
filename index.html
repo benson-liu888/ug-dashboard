@@ -190,8 +190,8 @@ html,body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:
     <div class="ug-grid">
       <div class="ug-card" id="w-ch-card">
         <h3>各通路日均比較上週</h3>
-        <p class="ug-note">本週各通路日均營業額與訂單量，對照上週相同星期幾的日均。現場單數＝來客數扣除 Uber Eats、foodpanda、ODO 單數。</p>
-        <div class="ug-tw"><table class="ug-t" id="w-ch"><thead><tr><th rowspan="2">通路</th><th colspan="3" class="grp">日均營業額（元）</th><th colspan="3" class="grp">日均訂單量（單）</th><th rowspan="2">本週營業額占比</th></tr><tr><th>本週</th><th>上週同期</th><th>增減</th><th>本週</th><th>上週同期</th><th>增減</th></tr></thead><tbody></tbody></table></div>
+        <p class="ug-note">本週各通路日均營業額、訂單量與杯數，對照上週相同星期幾的日均。現場單數＝來客數扣除 Uber Eats、foodpanda、ODO 單數；現場杯數＝總杯數扣除三個通路的杯數。</p>
+        <div class="ug-tw"><table class="ug-t" id="w-ch"><thead><tr><th rowspan="2">通路</th><th colspan="3" class="grp">日均營業額（元）</th><th colspan="3" class="grp">日均訂單量（單）</th><th colspan="3" class="grp">日均杯數（杯）</th><th rowspan="2">本週營業額占比</th></tr><tr><th>本週</th><th>上週同期</th><th>增減</th><th>本週</th><th>上週同期</th><th>增減</th><th>本週</th><th>上週同期</th><th>增減</th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
     <div class="ug-card" id="w-day-card">
@@ -333,7 +333,7 @@ dash.calc('dd', {
   title: '每日彙總（含全部門市）',
   description: '每家門市每天的數字，加上全部門市當天的合計；全部門市的天氣取當天最多門市的天氣。',
   fn: (daily) => {
-    const F = ['n','g','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d','ch'];
+    const F = ['n','g','t','c','tc','h','uba','ubn','fpa','fpn','oda','odn','d','ch','ubc','fpc','odc'];
     const out = []; const tot = new Map();
     for (const r of daily) {
       const o = { s: r.s, dt: r.dt, w: r.w || '', k: 1 };
@@ -404,7 +404,7 @@ dash.calc('w', {
   title: '週彙總',
   description: '每家門市（含全部門市）每週（週一至週日）的日均數字，與上週「相同星期幾」的日均比較；本週未滿 7 天時，上週只取同樣的星期幾。',
   fn: (dd) => {
-    const F = ['n','t','tc','uba','fpa','oda','ubn','fpn','odn'];
+    const F = ['n','t','tc','uba','fpa','oda','ubn','fpn','odn','c','ubc','fpc','odc'];
     const DAY = 864e5, iso = (t) => new Date(t).toISOString().slice(0, 10);
     const byKey = new Map(dd.map((r) => [r.s + '|' + r.dt, r]));
     const g = new Map();
@@ -439,6 +439,11 @@ dash.calc('w', {
       const inn_p = a.tc_p - a.ubn_p - a.fpn_p - a.odn_p;
       a.inn_d = a.inn / a.days; a.odn_d = a.odn / a.days; a.ubn_d = a.ubn / a.days; a.fpn_d = a.fpn / a.days;
       a.inn_d_p = q ? inn_p / q : null; a.odn_d_p = q ? a.odn_p / q : null; a.ubn_d_p = q ? a.ubn_p / q : null; a.fpn_d_p = q ? a.fpn_p / q : null;
+      a.inc = a.c - a.ubc - a.fpc - a.odc;
+      const inc_p = a.c_p - a.ubc_p - a.fpc_p - a.odc_p;
+      a.inc_d = a.inc / a.days; a.odc_d = a.odc / a.days; a.ubc_d = a.ubc / a.days; a.fpc_d = a.fpc / a.days;
+      a.inc_d_p = q ? inc_p / q : null; a.odc_d_p = q ? a.odc_p / q : null; a.ubc_d_p = q ? a.ubc_p / q : null; a.fpc_d_p = q ? a.fpc_p / q : null;
+      a.ch_inc_d = ch(a.inc_d, a.inc_d_p); a.ch_odc_d = ch(a.odc_d, a.odc_d_p); a.ch_ubc_d = ch(a.ubc_d, a.ubc_d_p); a.ch_fpc_d = ch(a.fpc_d, a.fpc_d_p);
       a.ch_inn_d = ch(a.inn_d, a.inn_d_p); a.ch_odn_d = ch(a.odn_d, a.odn_d_p); a.ch_ubn_d = ch(a.ubn_d, a.ubn_d_p); a.ch_fpn_d = ch(a.fpn_d, a.fpn_d_p);
       for (const f of F) delete a[f + '_p'];
     }
@@ -865,7 +870,10 @@ dash.calc('wx', {
       const o = CNT[c.k] + '_d';
       const oprev = R[o + '_p'] == null ? txt('—') : mk('span', 'w', o + '_p', wR, fmt(R[o + '_p']));
       const och = R['ch_' + o] == null ? txt('—') : (() => { const e = mk('span', 'w', 'ch_' + o, wR, sp(R['ch_' + o])); tone(e, R['ch_' + o]); return e; })();
-      tr.append(td0, td(mk('span', 'w', a, wR, fmt(R[a]))), td(prev), td(ch), td(mk('span', 'w', o, wR, fmt(R[o]))), td(oprev), td(och), td(mk('span', 'w', 'sh_' + c.k, wR, p1(R['sh_' + c.k]))));
+      const cu = { in: 'inc', od: 'odc', ub: 'ubc', fp: 'fpc' }[c.k] + '_d';
+      const cprev = R[cu + '_p'] == null ? txt('—') : mk('span', 'w', cu + '_p', wR, fmt(R[cu + '_p']));
+      const cch = R['ch_' + cu] == null ? txt('—') : (() => { const e = mk('span', 'w', 'ch_' + cu, wR, sp(R['ch_' + cu])); tone(e, R['ch_' + cu]); return e; })();
+      tr.append(td0, td(mk('span', 'w', a, wR, fmt(R[a]))), td(prev), td(ch), td(mk('span', 'w', o, wR, fmt(R[o]))), td(oprev), td(och), td(mk('span', 'w', cu, wR, fmt(R[cu]))), td(cprev), td(cch), td(mk('span', 'w', 'sh_' + c.k, wR, p1(R['sh_' + c.k]))));
       tb.append(tr);
     });
     const rows = sortRows('w-table', wrows.filter((r) => r.wk === week && r.s !== ALL));
